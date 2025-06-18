@@ -1,5 +1,4 @@
 /__pychache__
 /venv
 .env
-/calculator
 src/class_agent.py

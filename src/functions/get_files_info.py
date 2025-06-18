@@ -62,7 +62,7 @@ def write_file(working_directory, file_path, content):
     try:
         path_file = os.path.split(abs_file_path)
         my_path = path_file[0]
-        my_file = path_file[1]
+        # my_file = path_file[1]
         if not os.path.exists(my_path):
             os.makedirs(my_path)
 

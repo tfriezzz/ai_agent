@@ -1,4 +1,4 @@
-from functions.get_files_info import *
+# from functions.get_files_info import *
 from functions.run_python import run_python_file
 
 
