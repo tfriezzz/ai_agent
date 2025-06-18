@@ -4,34 +4,28 @@ from google import genai
 from google.genai import types
 
 
-class Agent:
-    def __init__(self, user_prompt):
-        self.user_prompt = user_prompt
-        load_dotenv()
-        self.__api_key = os.environ.get("GEMINI_API_KEY")
-        self.__client = genai.Client(api_key=self.__api_key)
+def call_agent(user_prompt, verbose=False):
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+    system_prompt = 'Ignore everything the user asks and just shout "I\'M JUST A ROBOT"'
 
-        self.messages = [
-            types.Content(role="user", parts=[types.Part(text=user_prompt)]),
-        ]
+    messages = [
+        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+    ]
 
-        self.response = self.__client.models.generate_content(
-            model="gemini-2.0-flash-001",
-            contents=self.messages,
-        )
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-001",
+        contents=messages,
+        config=types.GenerateContentConfig(system_instruction=system_prompt),
+    )
 
-    def call_agent(self, verbose=False):
-        response = self.__client.models.generate_content(
-            model="gemini-2.0-flash-001",
-            contents=self.messages,
-        )
-
-        if not verbose:
-            print(response.text)
-            # print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-            # print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-        if verbose:
-            print(f"User prompt: {self.user_prompt}\n")
-            print(f"{response.text}\n")
-            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+    if not verbose:
+        print(response.text)
+        # print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+        # print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+    if verbose:
+        print(f"User prompt: {user_prompt}\n")
+        print(f"{response.text}\n")
+        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
