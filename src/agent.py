@@ -25,22 +25,58 @@ def call_agent(user_prompt, verbose=False):
 
     schema_get_file_content = types.FunctionDeclaration(
         name="get_file_content",
-        description="Lists the content of a file, constrained to the working directory.",
+        description="Lists the content of a specified file, constrained to the working directory.",
         parameters=types.Schema(
             type=types.Type.OBJECT,
             properties={
                 "file_path": types.Schema(
                     type=types.Type.STRING,
-                    description="The file_path is the relative path to the file. Has to be provided",
+                    description="The file_path is the relative path to the file. This has to be provided",
                 ),
             },
         ),
     )
 
     # ADD TWO MORE HERE
+    schema_write_file = types.FunctionDeclaration(
+        name="write_file",
+        description="Writes the specified content to the specified file_path",
+        parameters=types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "file_path": types.Schema(
+                    type=types.Type.STRING,
+                    description="The file_path is the relative path to the file. This has to be provided",
+                ),
+                "content": types.Schema(
+                    type=types.Type.STRING,
+                    description="The content is what is to be written to the specified file_path",
+                ),
+            },
+        ),
+    )
+
+    schema_run_python_file = types.FunctionDeclaration(
+        name="run_python_file",
+        description="Executes the specified python file",
+        parameters=types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "file_path": types.Schema(
+                    type=types.Type.STRING,
+                    description="The file_path is the relative path to the file. This has to be provided",
+                ),
+            },
+        ),
+    )
 
     available_functions = types.Tool(
-        function_declarations=[schema_get_files_info, schema_get_file_content]
+        function_declarations=[
+            schema_get_files_info,
+            schema_get_file_content,
+            schema_write_file,
+            schema_run_python_file,
+        ]
     )
 
     system_prompt = """
@@ -50,6 +86,8 @@ def call_agent(user_prompt, verbose=False):
 
     - List files and directories
     - Read file contents
+    - Execute Python files with optional arguments
+    - Write or overwrite files
 
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
     """
@@ -66,8 +104,10 @@ def call_agent(user_prompt, verbose=False):
         ),
     )
 
+    global_call = None
     if response.function_calls:
         for call in response.function_calls:
+            global_call = call
             print(f"Calling function: {call.name}({call.args})")
 
     if not verbose and not response.function_calls:
@@ -79,4 +119,3 @@ def call_agent(user_prompt, verbose=False):
         print(f"{response.text}\n")
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-        print(f"Calling function: {call.name}({call.args})")
