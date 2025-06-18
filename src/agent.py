@@ -23,7 +23,25 @@ def call_agent(user_prompt, verbose=False):
         ),
     )
 
-    available_functions = types.Tool(function_declarations=[schema_get_files_info])
+    schema_get_file_content = types.FunctionDeclaration(
+        name="get_file_content",
+        description="Lists the content of a file, constrained to the working directory.",
+        parameters=types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "file_path": types.Schema(
+                    type=types.Type.STRING,
+                    description="The file_path is the relative path to the file. Has to be provided",
+                ),
+            },
+        ),
+    )
+
+    # ADD TWO MORE HERE
+
+    available_functions = types.Tool(
+        function_declarations=[schema_get_files_info, schema_get_file_content]
+    )
 
     system_prompt = """
     You are a helpful AI coding agent.
@@ -31,6 +49,7 @@ def call_agent(user_prompt, verbose=False):
     When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
 
     - List files and directories
+    - Read file contents
 
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
     """
