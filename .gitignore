@@ -1,4 +1,6 @@
 /__pychache__
+/src/__pychache__
+/src/functions/__pychache__
 /venv
 .env
 src/class_agent.py
