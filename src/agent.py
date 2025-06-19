@@ -2,9 +2,62 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from functions.get_files_info import get_files_info, get_file_content, write_file
+from functions.run_python import run_python_file
 
 
-def call_agent(user_prompt, verbose=False):
+def call_function(function_call_part, verbose=False):
+    function_name = function_call_part.name
+    function_map = {
+        "get_files_info": get_files_info,
+        "get_file_content": get_file_content,
+        "write_file": write_file,
+        "run_python_file": run_python_file,
+    }
+
+    if function_name in function_map:
+        function = function_map[function_name]
+        args = dict(function_call_part.args)
+        args["working_directory"] = "./calculator"
+
+        if verbose:
+            print(
+                f"Calling function: {function_call_part.name}({function_call_part.args})"
+            )
+
+        if not verbose:
+            print(f" - Calling function: {function_call_part.name}")
+
+        function_result = function(**args)
+
+        function_call_result = types.Content(
+            role="tool",
+            parts=[
+                types.Part.from_function_response(
+                    name=function_name,
+                    response={"result": function_result},
+                )
+            ],
+        )
+
+        # if verbose:
+        #    print(f"-> {function_call_result.parts[0].function_response.response}")
+
+        return function_call_result
+
+    if function_name not in function_map:
+        return types.Content(
+            role="tool",
+            parts=[
+                types.Part.from_function_response(
+                    name=function_name,
+                    response={"error": f"Unknown function: {function_name}"},
+                )
+            ],
+        )
+
+
+def generate_content(user_prompt, verbose=False):
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=api_key)
@@ -37,7 +90,6 @@ def call_agent(user_prompt, verbose=False):
         ),
     )
 
-    # ADD TWO MORE HERE
     schema_write_file = types.FunctionDeclaration(
         name="write_file",
         description="Writes the specified content to the specified file_path",
@@ -104,16 +156,27 @@ def call_agent(user_prompt, verbose=False):
         ),
     )
 
-    global_call = None
     if response.function_calls:
         for call in response.function_calls:
-            global_call = call
-            print(f"Calling function: {call.name}({call.args})")
+            if verbose:
+                call_result = call_function(call, verbose=True)
+
+            if not verbose:
+                call_result = call_function(call)
+
+            try:
+                response_data = call_result.parts[0].function_response.response
+            except (IndexError, AttributeError):
+                raise RuntimeError("Critical object missing")
+
+            print(call_result.parts[0].function_response.response["result"])
+
+            if call_result.parts[0].function_response.response and verbose:
+                print(f"-> {call_result.parts[0].function_response.response}")
 
     if not verbose and not response.function_calls:
         print(response.text)
-        # print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        # print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+
     if verbose and not response.function_calls:
         print(f"User prompt: {user_prompt}\n")
         print(f"{response.text}\n")
