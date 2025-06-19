@@ -6,6 +6,38 @@ from functions.get_files_info import get_files_info, get_file_content, write_fil
 from functions.run_python import run_python_file
 
 
+def feedback_loop(user_prompt, verbose=False):
+    # result = []
+    messages = [
+        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+    ]
+    for i in range(0, 20):
+        response = generate_content(messages, verbose)
+        found_tool = False
+
+        for candidate in response.candidates:
+            messages.append(candidate.content)
+
+            for part in candidate.content.parts:
+                if hasattr(part, "function_call") and part.function_call is not None:
+                    # call the tool
+                    found_tool = True
+
+        if not found_tool:
+            print(response.candidates[0].content.parts[0].text)
+            break
+
+        #    else:
+        #        print(candidate.content.parts[0].text)
+        #        break
+
+        # else:
+        #    continue
+        # break
+
+    # return result
+
+
 def call_function(function_call_part, verbose=False):
     function_name = function_call_part.name
     function_map = {
@@ -57,7 +89,7 @@ def call_function(function_call_part, verbose=False):
         )
 
 
-def generate_content(user_prompt, verbose=False):
+def generate_content(messages, verbose=False):
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=api_key)
@@ -135,6 +167,7 @@ def generate_content(user_prompt, verbose=False):
     You are a helpful AI coding agent.
 
     When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
+    When you are able, always start by calling a function. Do not just describe your plan.
 
     - List files and directories
     - Read file contents
@@ -144,9 +177,7 @@ def generate_content(user_prompt, verbose=False):
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
     """
 
-    messages = [
-        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
-    ]
+    # messages = []
 
     response = client.models.generate_content(
         model="gemini-2.0-flash-001",
@@ -169,16 +200,18 @@ def generate_content(user_prompt, verbose=False):
             except (IndexError, AttributeError):
                 raise RuntimeError("Critical object missing")
 
-            print(call_result.parts[0].function_response.response["result"])
+            # print(call_result.parts[0].function_response.response["result"])
 
             if call_result.parts[0].function_response.response and verbose:
                 print(f"-> {call_result.parts[0].function_response.response}")
 
     if not verbose and not response.function_calls:
-        print(response.text)
+        return response
 
     if verbose and not response.function_calls:
-        print(f"User prompt: {user_prompt}\n")
+        print(f"User prompt: {messages}\n")
         print(f"{response.text}\n")
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+
+    return response
